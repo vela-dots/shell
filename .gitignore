@@ -1,3 +1,5 @@
-/target
-**/*.user
-.DS_Store
+.direnv
+/result
+/.qmlls.ini
+build/
+.cache/

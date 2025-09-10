@@ -1,95 +1,94 @@
+pragma ComponentBehavior: Bound
+
 import qs.components
 import qs.services
 import qs.utils
 import qs.config
-import Quickshell.Widgets
-import Quickshell.Wayland
 import QtQuick
-import QtQuick.Layouts
 
 Item {
     id: root
 
-    required property Item wrapper
+    required property var bar
+    required property Brightness.Monitor monitor
+    property color color: Colors.palette.m3primary
 
-    implicitWidth: Hypr.activeTopLevel ? child.implicitWidth : -Appearance.padding.large * 2
-    implicitHeight: child.implicitHeight
+    readonly property int maxHeight: {
+        const otherModules = bar.children.filter(c => c.id && c.item !== this && c.id !== "spacer");
+        const otherHeight = otherModules.reduce((acc, curr) => acc + curr.height, 0);
+        // Length - 2 cause repeater counts as a child
+        return bar.height - otherHeight - bar.spacing * (bar.children.length - 1) - bar.vPadding * 2;
+    }
+    property Title current: text1
 
-    Colum {
-        id: child
+    clip: true
+    implicitWidth: Math.max(icon.implicitWidth, current.implicitHeight)
+    implicitHeight: icon.implicitHeight + current.implicitWidth + current.anchors.topMargin
 
-        anchors.centerIn: parent
-        spacing: Appearance.spacing.normal
+    MaterialIcon {
+        id: icon
 
-        RowLayout { 
-            id: detailsRow
+        anchors.horizontalCenter: parent.horizontalCenter
 
-            anchors.left: parent.left
-            anchors.right: parent.right
-            spacing: Appearance.spacing.normal
+        animate: true
+        text: Icons.getAppCategoryIcon(Hypr.activeToplevel?.lastIpcObject.class, "desktop_windows")
+        color: root.color
+    }
 
-            IconImage {
-                id: icon
+    Title {
+        id: text1
+    }
 
-                Layout.alignment: Qt.AlignVCenter
-                implicitSize: details.implicitHeight
-                source: Icons.getAppIcon(Hypr.activeTopLevel?.lastIpcObject.class ?? "", "image-missing")
-            }
+    Title {
+        id: text2
+    }
 
-            ColumnLayout {
-                id: details
+    TextMetrics {
+        id: metrics
 
-                spacing: 0
-                Layout.fillWidth: true
+        text: Hypr.activeToplevel?.title ?? qsTr("Desktop")
+        font.pointSize: Appearance.font.size.smaller
+        font.family: Appearance.font.family.mono
+        elide: Qt.ElideRight
+        elideWidth: root.maxHeight - icon.height
 
-                StyledText {
-                    Layout.fillWidth: true
-                    text: Hypr.activeTopLevel?.title ?? ""
-                    font.pointSize: Appearance.font.size.normal
-                    elide: Text.ElideRight
-                }
-            }
+        onTextChanged: {
+            const next = root.current === text1 ? text2 : text1;
+            next.text = elidedText;
+            root.current = next;
+        }
+        onElideWidthChanged: root.current.text = elidedText
+    }
 
-            Item {
-                implicitWidth: expandIcon.implicitHeight + Appearance.padding.small * 2
-                implicitHeight: expandIcon.implicitHeight + Appearance.padding.small * 2
+    Behavior on implicitHeight {
+        Anim {
+            easing.bezierCurve: Appearance.anim.curves.emphasized
+        }
+    }
 
-                Layout.alignment: Qt.AlignVCenter
+    component Title: StyledText {
+        id: text
 
-                StateLayer {
-                    radius: Appearance.rounding.normal
+        anchors.horizontalCenter: icon.horizontalCenter
+        anchors.top: icon.bottom
+        anchors.topMargin: Appearance.spacing.small
 
-                    function onClicked(): void {
-                        root.wrapper.detach("winfo");
-                    }
-                }
+        font.pointSize: metrics.font.pointSize
+        font.family: metrics.font.family
+        color: root.color
+        opacity: root.current === this ? 1 : 0
 
-                MaterialIcon {
-                    id: expandIcon
-
-                    anchors.centerIn: parent
-                    anchors.horizontalCenterOffset: font.pointSize * 0.05
-
-                    text: "chevron_right"
-
-                    font.pointSize: Appearance.font.size.large
-                }
-            }
+        transform: Rotation {
+            angle: 90
+            origin.x: text.implicitHeight / 2
+            origin.y: text.implicitHeight / 2
         }
 
-        ClippingWrapperRectangle {
-            color: "transparent"
-            radius: Appearance.rounding.small
+        width: implicitHeight
+        height: implicitWidth
 
-            ScreencopyView {
-                id: preview
-
-                captureSource: Hypr.activeTopLevel?.wayland ?? null
-                live: visible
-
-                constraintSize.width: Config.bar.sizes.windowPreviewSize
-                constraintSize.height: Config.bar.sizes.windowPreviewSize
-            }
+        Behavior on opacity {
+            Anim {}
         }
     }
 }
