@@ -247,6 +247,18 @@ StyledRect {
                 fill: 1
             }
         }
+
+        // Language accent toggle icon
+        WrappedLoader {
+            name: "accent"
+            active: true
+
+            sourceComponent: MaterialIcon {
+                animate: true
+                text: Colors.accentsEnabled ? "palette" : "palette_off"
+                color: root.color
+            }
+        }
     }
 
     component WrappedLoader: Loader {

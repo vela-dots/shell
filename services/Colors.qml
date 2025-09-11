@@ -4,6 +4,8 @@ pragma ComponentBehavior: Bound
 import qs.config
 import qs.utils
 import Vela
+// Local singleton to read palette overrides written by the editor helper
+import "./"
 import Quickshell
 import Quickshell.Io
 import QtQuick
@@ -12,6 +14,8 @@ Singleton {
     id: root
 
     property bool showPreview
+    // Toggle to enable/disable language accent overlays at runtime
+    property bool accentsEnabled: true
     property string scheme
     property string flavor
     readonly property bool light: showPreview ? previewLight : currentLight
@@ -73,6 +77,28 @@ Singleton {
             if (colors.hasOwnProperty(propName))
             colors[propName] = `#${color}`;
         }
+        applyOverrides();
+    }
+
+    function applyOverrides(): void {
+        if (!accentsEnabled)
+            return;
+        const overrides = ColorHandler.activeColors ?? {};
+        const setIf = (prop, key) => {
+            if (overrides[key]) {
+                if (current.hasOwnProperty(prop)) current[prop] = `#${overrides[key]}`;
+                if (preview.hasOwnProperty(prop)) preview[prop] = `#${overrides[key]}`;
+            }
+        };
+        setIf('m3primary', 'primary');
+        setIf('m3secondary', 'secondary');
+        setIf('m3tertiary', 'tertiary');
+        setIf('m3surfaceTint', 'surfaceTint');
+    }
+
+    function resetToScheme(): void {
+        // Reload base scheme colors and do not apply overrides
+        root.load(schemeFile.text, false);
     }
 
     function setMode(mode: string): void {
@@ -80,10 +106,17 @@ Singleton {
     }
 
     FileView {
+        id: schemeFile
         path: `${Paths.state}/scheme.json`
         watchChanges: true
         onFileChanged: reload()
         onLoaded: root.load(text(), false)
+    }
+
+    Connections {
+        target: ColorHandler
+        function onActiveLanguageChanged(): void { applyOverrides(); }
+        function onPalettesChanged(): void { applyOverrides(); }
     }
 
     Connections {
