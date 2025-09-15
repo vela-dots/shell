@@ -10,4 +10,5 @@ crate-type = ["cdylib"]
 cxx = "1"
 cxx-qt = { version = "0.7.2", features = ["qt6", "qml"] }
 image = "0.25.8"
-color-thief = "0.2"
+color-thief = "0.2.2"
+evalexpr = "12.0.2"

@@ -60,4 +60,39 @@ impl CUtils {
             Err(_) => QColor::from_rgb(0, 0, 0),
         }
     }
+
+    /// Calculating the average luminance of the wallpaper. Downscales using Triangle
+    /// for efficiency then computes luminance with the standard formula:
+    /// 0.2126*R + 0.7152*G + 0.0722*B
+    #[qinvokable(cpp_name = "getAverageLuminance")]
+    pub fn get_average_luminance(&self, path: &str, rescale_size: Option<i32>) -> f64 {
+        let size = rescale_size.unwrap_or(128).max(1) as u32;
+        match image::open(path) {
+            Ok(img) => {
+                let resized = img.resize(size, size, FilterType::Triangle);
+                let mut total_luma = 0f64;
+                let mut count = 0u64;
+                for pixel in resized.pixels() {
+                    let channels = pixel.2.to_rgb();
+                    let r = channels[0] as f64 / 255.0;
+                    let g = channels[1] as f64 / 255.0;
+                    let b = channels[2] as f64 / 255.0;
+                    // Luminance formula
+                    total_luma += 0.2126 * r + 0.7152 * g + 0.0722 * b;
+                    count += 1;
+                }
+                if count > 0 {
+                    total_luma / (count as f64)
+                } else {
+                    0.0
+                }
+            }
+            Err(_) => 0.0,
+        }
+    }
+}
+
+/// Register CUtils with the QML engine
+pub fn registe() {
+    cxx_qt::qml_register_type::<CUtils>("Vela", 1, 0, "CUtils");
 }
